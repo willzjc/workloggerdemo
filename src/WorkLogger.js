@@ -8,7 +8,10 @@ import {
   updateLog, 
   subscribeToLogs, 
   getTodayLogs,
-  handleFirebaseConnectionStatus 
+  handleFirebaseConnectionStatus,
+  signInWithGoogle,
+  signOutUser,
+  onAuthStateChanged 
 } from './services/dbService';
 
 export default function WorkLogger() {
@@ -16,6 +19,7 @@ export default function WorkLogger() {
     const [todayLogs, setTodayLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [connectionError, setConnectionError] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         jobName: '',
@@ -76,6 +80,20 @@ export default function WorkLogger() {
         setError("Connection error. Check your internet connection and try again.");
     };
 
+    // Subscribe to auth state changes
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(user => {
+            setCurrentUser(user);
+            if (user) {
+                setFormData(prev => ({ ...prev, name: user.displayName || '' }));
+            } else {
+                setFormData(prev => ({ ...prev, name: '' }));
+            }
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
     // Attempt to reconnect when app comes online
     useEffect(() => {
         const handleOnline = () => {
@@ -100,7 +118,6 @@ export default function WorkLogger() {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Check initial connection status
         if (!navigator.onLine) {
             handleOffline();
         }
@@ -108,15 +125,12 @@ export default function WorkLogger() {
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
-            // Ensure we're enabling the network when component unmounts
-            // to prevent issues with other Firebase operations
             handleFirebaseConnectionStatus(true).catch(console.error);
         };
     }, []);
 
     // Subscribe to logs
     useEffect(() => {
-        setLoading(true);
         let unsubscribeAll = () => {};
         let unsubscribeToday = () => {};
 
@@ -146,7 +160,6 @@ export default function WorkLogger() {
         }
         
         return () => {
-            // Make sure unsubscribe functions exist before calling
             if (typeof unsubscribeAll === 'function') {
                 unsubscribeAll();
             }
@@ -205,6 +218,7 @@ export default function WorkLogger() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        if (name === 'name' && currentUser) return;
         setFormData(prev => ({
             ...prev,
             [name]: value
@@ -219,15 +233,17 @@ export default function WorkLogger() {
             return;
         }
 
+        const nameToSave = currentUser ? currentUser.displayName : formData.name;
+
         try {
-            // Add the log to Firestore
             await addLog({
                 ...formData,
+                name: nameToSave,
                 time: formData.time
             });
 
             setFormData({
-                name: '',
+                name: currentUser ? currentUser.displayName : '',
                 jobName: '',
                 jobDescription: '',
                 time: formatDateTimeForInput(new Date()),
@@ -274,6 +290,7 @@ export default function WorkLogger() {
 
     const handleEditChange = (e) => {
         const { name, value } = e.target;
+        if (name === 'name' && currentUser && selectedJob?.name === currentUser.displayName) return;
         setEditFormData(prev => ({
             ...prev,
             [name]: value
@@ -290,14 +307,21 @@ export default function WorkLogger() {
             return;
         }
 
+        const nameToUpdate = currentUser ? currentUser.displayName : editFormData.name;
+
         try {
-            await updateLog(selectedJob.id, editFormData);
+            await updateLog(selectedJob.id, {
+                ...editFormData,
+                name: nameToUpdate,
+                time: editFormData.time
+            });
             setError('');
             setIsEditMode(false);
             
             setSelectedJob({
                 ...selectedJob,
-                ...editFormData
+                ...editFormData,
+                name: nameToUpdate
             });
         } catch (err) {
             console.error("Error updating document: ", err);
@@ -351,6 +375,20 @@ export default function WorkLogger() {
 
     return (
         <div id="appContainer" className="modern-theme" style={{ backgroundColor: 'white' }}>
+            {/* --- Top Banner for Auth --- */}
+            <div className="top-banner">
+                <div className="auth-controls">
+                    {currentUser ? (
+                        <>
+                            <span className="user-greeting">Hi, {currentUser.displayName}!</span>
+                            <button onClick={signOutUser} className="btn btn-secondary btn-sm">Logout</button>
+                        </>
+                    ) : (
+                        <button onClick={signInWithGoogle} className="btn btn-primary btn-sm">Login with Google</button>
+                    )}
+                </div>
+            </div>
+
             <div id="mainContent">
                 <div className="header-section" ref={logoRef}>
                     <div className="logo-title-container">
@@ -374,7 +412,8 @@ export default function WorkLogger() {
                                     value={formData.name}
                                     onChange={handleInputChange}
                                     className="form-control"
-                                    placeholder="Enter person name"
+                                    placeholder={currentUser ? "Using Google account name" : "Enter person name"}
+                                    readOnly={!!currentUser}
                                 />
                             </div>
 
@@ -537,6 +576,7 @@ export default function WorkLogger() {
                                             value={editFormData.name}
                                             onChange={handleEditChange}
                                             className="form-control"
+                                            readOnly={!!currentUser && selectedJob?.name === currentUser.displayName}
                                         />
                                     </div>
                                     

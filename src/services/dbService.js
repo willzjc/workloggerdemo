@@ -1,176 +1,146 @@
-import { db } from './firebaseConfig';
+import { initializeApp } from 'firebase/app';
 import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  deleteDoc, 
-  updateDoc, 
-  query, 
-  where, 
-  onSnapshot,
-  Timestamp,
-  orderBy,
-  enableNetwork,
-  disableNetwork
+    getFirestore, 
+    collection, 
+    addDoc, 
+    deleteDoc, 
+    updateDoc, 
+    doc, 
+    onSnapshot, 
+    query, 
+    where, 
+    orderBy,
+    enableNetwork,
+    disableNetwork,
+    Timestamp
 } from 'firebase/firestore';
+import { 
+    getAuth, 
+    GoogleAuthProvider, 
+    signInWithPopup, 
+    signOut, 
+    onAuthStateChanged as onFirebaseAuthChange
+} from "firebase/auth";
 
-const COLLECTION_NAME = 'workLogs';
-
-// Convert JS Date to Firestore Timestamp and vice versa
-const dateToTimestamp = (date) => Timestamp.fromDate(new Date(date));
-const timestampToDate = (timestamp) => timestamp.toDate();
-
-// Get all logs
-export const getAllLogs = async () => {
-  try {
-    const querySnapshot = await getDocs(
-      query(collection(db, COLLECTION_NAME), orderBy('time', 'desc'))
-    );
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      time: timestampToDate(doc.data().time).toISOString()
-    }));
-  } catch (error) {
-    console.error("Error getting logs: ", error);
-    throw error;
-  }
+// Firebase configuration (replace with your actual config)
+const firebaseConfig = {
+    apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
-// Handle Firebase connection status
-export const handleFirebaseConnectionStatus = async (online = true) => {
-  try {
-    if (online) {
-      await enableNetwork(db);
-      console.log('Firebase network connection enabled');
-    } else {
-      await disableNetwork(db);
-      console.log('Firebase network connection disabled');
-    }
-  } catch (error) {
-    console.error('Firebase network status change error:', error);
-  }
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+const logsCollection = collection(db, 'worklogs');
+
+// --- Auth Functions ---
+
+export const signInWithGoogle = () => {
+    return signInWithPopup(auth, googleProvider);
 };
 
-// Get today's logs
-export const getTodayLogs = (callback, errorCallback = null) => {
-  try {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('time', '>=', dateToTimestamp(startOfDay)),
-      where('time', '<=', dateToTimestamp(endOfDay)),
-      orderBy('time', 'desc')
-    );
-    
-    const unsubscribe = onSnapshot(
-      q, 
-      (querySnapshot) => {
-        const logs = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          time: timestampToDate(doc.data().time).toISOString()
-        }));
-        callback(logs);
-      },
-      (error) => {
-        console.error("Error in today's logs subscription:", error);
-        if (errorCallback) {
-          errorCallback(error);
-        }
-      }
-    );
-    
-    return unsubscribe;
-  } catch (error) {
-    console.error("Error creating today's logs subscription:", error);
-    if (errorCallback) {
-      errorCallback(error);
-    }
-    // Return a dummy unsubscribe function in case of error
-    return () => {};
-  }
+export const signOutUser = () => {
+    return signOut(auth);
 };
 
-// Add a new log
+export const onAuthStateChanged = (callback) => {
+    return onFirebaseAuthChange(auth, callback);
+};
+
+// --- Firestore Functions ---
+
+// Function to add a log
 export const addLog = async (logData) => {
-  try {
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-      ...logData,
-      time: dateToTimestamp(logData.time)
+    const timeToStore = typeof logData.time === 'string' 
+        ? Timestamp.fromDate(new Date(logData.time)) 
+        : logData.time;
+
+    return await addDoc(logsCollection, {
+        ...logData,
+        time: timeToStore,
+        duration: Number(logData.duration)
     });
-    return docRef.id;
-  } catch (error) {
-    console.error("Error adding log: ", error);
-    throw error;
-  }
 };
 
-// Update an existing log
-export const updateLog = async (id, logData) => {
-  try {
-    const logRef = doc(db, COLLECTION_NAME, id);
-    await updateDoc(logRef, {
-      ...logData,
-      time: dateToTimestamp(logData.time)
-    });
-    return id;
-  } catch (error) {
-    console.error("Error updating log: ", error);
-    throw error;
-  }
-};
-
-// Delete a log
+// Function to delete a log
 export const deleteLog = async (id) => {
-  try {
-    await deleteDoc(doc(db, COLLECTION_NAME, id));
-    return id;
-  } catch (error) {
-    console.error("Error deleting log: ", error);
-    throw error;
-  }
+    const logDoc = doc(db, 'worklogs', id);
+    return await deleteDoc(logDoc);
 };
 
-// Listen for all logs in real time
-export const subscribeToLogs = (callback, errorCallback = null) => {
-  try {
-    const q = query(
-      collection(db, COLLECTION_NAME), 
-      orderBy('time', 'desc')
-    );
-    
-    const unsubscribe = onSnapshot(
-      q, 
-      (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          time: timestampToDate(doc.data().time).toISOString()
+// Function to update a log
+export const updateLog = async (id, updatedData) => {
+    const logDoc = doc(db, 'worklogs', id);
+    const timeToStore = typeof updatedData.time === 'string' 
+        ? Timestamp.fromDate(new Date(updatedData.time)) 
+        : updatedData.time;
+        
+    return await updateDoc(logDoc, {
+        ...updatedData,
+        time: timeToStore,
+        duration: Number(updatedData.duration)
+    });
+};
+
+// Function to subscribe to all logs (ordered by time descending)
+export const subscribeToLogs = (callback, onError) => {
+    const q = query(logsCollection, orderBy('time', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const logs = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            time: doc.data().time?.toDate ? doc.data().time.toDate().toISOString() : new Date().toISOString() 
         }));
         callback(logs);
-      },
-      (error) => {
-        console.error("Error in logs subscription:", error);
-        if (errorCallback) {
-          errorCallback(error);
-        }
-      }
+    }, onError);
+};
+
+// Function to get today's logs
+export const getTodayLogs = (callback, onError) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const startTimestamp = Timestamp.fromDate(today);
+    const endTimestamp = Timestamp.fromDate(tomorrow);
+
+    const q = query(
+        logsCollection, 
+        where('time', '>=', startTimestamp), 
+        where('time', '<', endTimestamp),
+        orderBy('time', 'desc')
     );
-    
-    return unsubscribe;
-  } catch (error) {
-    console.error("Error creating subscription:", error);
-    if (errorCallback) {
-      errorCallback(error);
+
+    return onSnapshot(q, (snapshot) => {
+        const todayLogs = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            time: doc.data().time?.toDate ? doc.data().time.toDate().toISOString() : new Date().toISOString() 
+        }));
+        callback(todayLogs);
+    }, onError);
+};
+
+// Function to handle Firebase network connection status
+export const handleFirebaseConnectionStatus = async (enable) => {
+    try {
+        if (enable) {
+            await enableNetwork(db);
+            console.log("Firebase network enabled.");
+        } else {
+            await disableNetwork(db);
+            console.log("Firebase network disabled.");
+        }
+    } catch (error) {
+        console.error("Error changing Firebase network status:", error);
+        throw error;
     }
-    // Return a dummy unsubscribe function in case of error
-    return () => {};
-  }
 };

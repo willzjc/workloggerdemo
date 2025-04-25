@@ -27,6 +27,7 @@ body {
     padding: 2rem;
     max-width: 1200px;
     margin: 0 auto;
+    padding-top: 50px; /* Height of the banner + some space */
 }
 
 #mainContent {
@@ -39,9 +40,11 @@ body {
 /* Header with logo */
 .header-section {
     display: flex;
+    justify-content: space-between; /* Keep logo/title left */
     align-items: center;
     margin-bottom: 2rem;
-    padding: 1rem;
+    padding: 15px 20px; /* Adjust padding if needed */
+    margin-top: 0; /* Remove margin-top if it exists and conflicts */
 }
 
 .logo {
@@ -92,6 +95,38 @@ body {
   margin: 0;
   display: inline-flex; /* Change to inline-flex for better alignment */
   align-items: center; /* Center text vertically */
+}
+
+/* --- Top Banner Styles --- */
+.top-banner {
+  background-color: #f8f9fa; /* Light grey background */
+  padding: 8px 20px; /* Padding around the content */
+  border-bottom: 1px solid #e0e0e0; /* Subtle border */
+  position: fixed; /* Stick to the top */
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000; /* Ensure it's above other content */
+  box-sizing: border-box; /* Include padding in width */
+}
+
+.auth-controls {
+  display: flex;
+  justify-content: flex-end; /* Align items to the right */
+  align-items: center;
+  max-width: 1200px; /* Optional: limit width */
+  margin: 0 auto; /* Center the controls container */
+}
+
+.user-greeting {
+  margin-right: 15px; /* Space between greeting and button */
+  font-size: 0.9em;
+  color: #555;
+}
+
+.auth-controls .btn {
+  padding: 5px 10px; /* Smaller padding for buttons in banner */
+  font-size: 0.85em;
 }
 
 /* Glass effect for cards */
@@ -232,6 +267,27 @@ textarea.form-control {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* Google Button Style */
+.btn-google {
+    background-color: #4285F4; /* Google Blue */
+    color: white;
+    border: 1px solid transparent; /* Optional: Add border */
+}
+
+.btn-google:hover {
+    background-color: #357ae8; /* Darker Google Blue on hover */
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3); /* Google Blue shadow */
+    transform: translateY(-2px);
+}
+
+/* Optional: Style for a Google icon if using font-awesome or similar */
+/*
+.btn-google .google-icon {
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+*/
 
 /* Table Styles */
 .table-container {
