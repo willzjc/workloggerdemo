@@ -4,12 +4,12 @@ import './styles/WorkLogger.css';
 import * as d3 from 'd3';
 // eslint-disable-next-line no-unused-vars
 import WorkLogVisualization from './components/WorkLogVisualization';
+import { addLog, deleteLog, updateLog, subscribeToLogs, getTodayLogs } from './services/dbService';
 
 export default function WorkLogger() {
-    const [logs, setLogs] = useState(() => {
-        const savedLogs = localStorage.getItem('workLogs');
-        return savedLogs ? JSON.parse(savedLogs) : [];
-    });
+    const [logs, setLogs] = useState([]);
+    const [todayLogs, setTodayLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [formData, setFormData] = useState({
         jobName: '',
@@ -63,41 +63,23 @@ export default function WorkLogger() {
         return sentences.slice(0, sentenceCount).join('') + '...';
     }
 
-    // Filter logs for today
-    const todayLogs = logs.filter(log => {
-        const logDate = new Date(log.time).toDateString();
-        const today = new Date().toDateString();
-        return logDate === today;
-    });
-
-    // Save logs to localStorage whenever they change
+    // Subscribe to logs
     useEffect(() => {
-        localStorage.setItem('workLogs', JSON.stringify(logs));
-    }, [logs]);
-
-    // Effect to manage body class when popup is open/closed
-    useEffect(() => {
-        const mainContent = document.getElementById('mainContent');
-        if (showPopup) {
-            document.body.style.overflow = 'hidden';
-            if (mainContent) {
-                mainContent.style.filter = 'blur(5px)';
-                mainContent.style.transition = 'filter 0.3s ease';
-            }
-        } else {
-            document.body.style.overflow = 'auto';
-            if (mainContent) {
-                mainContent.style.filter = 'none';
-            }
-        }
-
+        setLoading(true);
+        const unsubscribeAll = subscribeToLogs((fetchedLogs) => {
+            setLogs(fetchedLogs);
+            setLoading(false);
+        });
+        
+        const unsubscribeToday = getTodayLogs((fetchedTodayLogs) => {
+            setTodayLogs(fetchedTodayLogs);
+        });
+        
         return () => {
-            document.body.style.overflow = 'auto';
-            if (mainContent) {
-                mainContent.style.filter = 'none';
-            }
+            unsubscribeAll();
+            unsubscribeToday();
         };
-    }, [showPopup]);
+    }, []);
 
     // Animate elements on mount
     useEffect(() => {
@@ -154,7 +136,7 @@ export default function WorkLogger() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!formData.jobName.trim()) {
@@ -162,26 +144,34 @@ export default function WorkLogger() {
             return;
         }
 
-        const newLog = {
-            id: Date.now(),
-            ...formData,
-            time: formData.time
-        };
+        try {
+            // Add the log to Firestore
+            await addLog({
+                ...formData,
+                time: formData.time
+            });
 
-        setLogs(prev => [...prev, newLog]);
+            setFormData({
+                jobName: '',
+                jobDescription: '',
+                time: formatDateTimeForInput(new Date()),
+                duration: 1
+            });
 
-        setFormData({
-            jobName: '',
-            jobDescription: '',
-            time: formatDateTimeForInput(new Date()),
-            duration: 1
-        });
-
-        setError('');
+            setError('');
+        } catch (err) {
+            console.error("Error adding document: ", err);
+            setError('Failed to add log. Please try again.');
+        }
     };
 
-    const handleDelete = (id) => {
-        setLogs(prev => prev.filter(log => log.id !== id));
+    const handleDelete = async (id) => {
+        try {
+            await deleteLog(id);
+        } catch (err) {
+            console.error("Error deleting document: ", err);
+            setError('Failed to delete log. Please try again.');
+        }
     };
 
     const openJobDetails = (job) => {
@@ -217,25 +207,26 @@ export default function WorkLogger() {
         setIsEditMode(true);
     };
 
-    const saveEditedJob = () => {
+    const saveEditedJob = async () => {
         if (!editFormData.jobName.trim()) {
             setError('Job name is required');
             return;
         }
 
-        setLogs(prev => prev.map(log => 
-            log.id === selectedJob.id 
-                ? { ...log, ...editFormData } 
-                : log
-        ));
-
-        setIsEditMode(false);
-        setError('');
-        
-        setSelectedJob({
-            ...selectedJob,
-            ...editFormData
-        });
+        try {
+            await updateLog(selectedJob.id, editFormData);
+            
+            setIsEditMode(false);
+            setError('');
+            
+            setSelectedJob({
+                ...selectedJob,
+                ...editFormData
+            });
+        } catch (err) {
+            console.error("Error updating document: ", err);
+            setError('Failed to update log. Please try again.');
+        }
     };
 
     const cancelEdit = () => {
@@ -363,7 +354,12 @@ export default function WorkLogger() {
                         )}
                     </div>
 
-                    {todayLogs.length > 0 ? (
+                    {loading ? (
+                        <div className="loading-indicator">
+                            <div className="spinner"></div>
+                            <p>Loading your logs...</p>
+                        </div>
+                    ) : todayLogs.length > 0 ? (
                         <div className="logs-container">
                             {todayLogs.map(log => (
                                 <div key={log.id} className="log-card">

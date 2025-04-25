@@ -52,7 +52,7 @@ const WorkLogVisualization = ({ logs }) => {
     // Create color scale
     const color = d3.scaleSequential()
       .domain([0, d3.max(data, d => d.duration)])
-      .interpolator(d3.interpolateBlues);
+      .interpolator(d3.interpolateGreys);
 
     // Create and append the bar elements with animation
     const g = svg.append("g");
