@@ -257,7 +257,7 @@ export default function WorkLogger() {
                 <h1 className="app-title">Work Logger</h1>
 
                 {/* Add new work log form */}
-                <div className="card">
+                <div id="mainform" className="card" style={{ border: '1px solid #ddd' }}>
                     <h2 className="card-title">Add New Work Log</h2>
 
                     {error && <div className="error-message">{error}</div>}
@@ -320,7 +320,7 @@ export default function WorkLogger() {
                 </div>
 
                 {/* Display today's logs */}
-                <div className="card">
+                <div id="worklogs" className="card" style={{ border: '1px solid #ddd' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <h2 className="card-title">Today's Work Logs</h2>
 
@@ -459,6 +459,7 @@ export default function WorkLogger() {
                                     <button
                                         onClick={saveEditedJob}
                                         className="popup-btn btn-primary"
+                                        style={{ marginRight: '3px' }}
                                     >
                                         Save Changes
                                     </button>
@@ -474,6 +475,7 @@ export default function WorkLogger() {
                                     <button
                                         onClick={enterEditMode}
                                         className="popup-btn btn-primary"
+                                        style={{ marginRight: '3px' }}
                                     >
                                         Edit
                                     </button>
