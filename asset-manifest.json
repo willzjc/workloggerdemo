@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/workloggerdemo/static/css/main.1481e621.css",
+    "main.js": "/workloggerdemo/static/js/main.3d1e67ae.js",
+    "index.html": "/workloggerdemo/index.html",
+    "main.1481e621.css.map": "/workloggerdemo/static/css/main.1481e621.css.map",
+    "main.3d1e67ae.js.map": "/workloggerdemo/static/js/main.3d1e67ae.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1481e621.css",
+    "static/js/main.3d1e67ae.js"
+  ]
+}
