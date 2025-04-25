@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/workloggerdemo/static/css/main.cb4380e8.css",
-    "main.js": "/workloggerdemo/static/js/main.c4820b10.js",
+    "main.js": "/workloggerdemo/static/js/main.2951c17a.js",
     "index.html": "/workloggerdemo/index.html",
     "main.cb4380e8.css.map": "/workloggerdemo/static/css/main.cb4380e8.css.map",
-    "main.c4820b10.js.map": "/workloggerdemo/static/js/main.c4820b10.js.map"
+    "main.2951c17a.js.map": "/workloggerdemo/static/js/main.2951c17a.js.map"
   },
   "entrypoints": [
     "static/css/main.cb4380e8.css",
-    "static/js/main.c4820b10.js"
+    "static/js/main.2951c17a.js"
   ]
 }
