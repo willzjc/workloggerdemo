@@ -1,11 +1,11 @@
 {
   "files": {
-    "main.css": "/workloggerdemo/static/css/main.7631bef7.css",
-    "main.js": "/workloggerdemo/static/js/main.9bb95707.js",
+    "main.css": "/workloggerdemo/static/css/main.9257b11d.css",
+    "main.js": "/workloggerdemo/static/js/main.b71f085c.js",
     "index.html": "/workloggerdemo/index.html"
   },
   "entrypoints": [
-    "static/css/main.7631bef7.css",
-    "static/js/main.9bb95707.js"
+    "static/css/main.9257b11d.css",
+    "static/js/main.b71f085c.js"
   ]
 }
