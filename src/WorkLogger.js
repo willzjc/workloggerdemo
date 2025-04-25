@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import logo from './image.png'; // Import the image
+import './styles/WorkLogger.css'; // Import the consolidated styles
 
 export default function WorkLogger() {
     const [logs, setLogs] = useState(() => {
@@ -38,6 +39,20 @@ export default function WorkLogger() {
     function getCurrentDateString() {
         const today = new Date();
         return today.toISOString().split('T')[0];
+    }
+    
+    // Function to truncate text
+    function truncateText(text, sentenceCount = 2) {
+        if (!text) return "";
+        
+        // Split by sentence endings (period followed by a space or end of string)
+        const sentences = text.match(/[^.!?]+[.!?]+\s*|[^.!?]+$/g) || [];
+        
+        if (sentences.length <= sentenceCount) {
+            return text;
+        }
+        
+        return sentences.slice(0, sentenceCount).join('') + '...';
     }
 
     // Filter logs for today
@@ -171,348 +186,166 @@ export default function WorkLogger() {
         document.body.removeChild(link);
     };
 
-    // Popup styling with animation and glassmorphism
-    const popupStyles = {
-        overlay: {
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)', // For Safari
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1rem',
-            opacity: showPopup ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-        },
-        container: {
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '0.75rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            width: '100%',
-            maxWidth: '32rem',
-            margin: '0 auto',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            maxHeight: '90vh',
-            transform: showPopup ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'transform 0.3s ease',
-            border: '1px solid rgba(255, 255, 255, 0.18)'
-        },
-        header: {
-            padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid rgba(229, 231, 235, 0.5)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: 'rgba(248, 250, 252, 0.8)'
-        },
-        headerTitle: {
-            fontSize: '1.25rem',
-            fontWeight: '600',
-            color: '#1e293b'
-        },
-        closeButton: {
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: '#64748b',
-            fontSize: '1.5rem',
-            padding: '0.25rem',
-            borderRadius: '50%',
-            width: '2rem',
-            height: '2rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background-color 0.2s ease',
-            ':hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.05)'
-            }
-        },
-        body: {
-            padding: '1.5rem',
-            overflowY: 'auto',
-            flexGrow: 1
-        },
-        footer: {
-            padding: '1rem 1.5rem',
-            borderTop: '1px solid rgba(229, 231, 235, 0.5)',
-            backgroundColor: 'rgba(248, 250, 252, 0.8)',
-            textAlign: 'right'
-        },
-        footerButton: {
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            padding: '0.5rem 1.25rem',
-            borderRadius: '0.5rem',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: '500',
-            transition: 'background-color 0.2s ease',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-        },
-        fieldGroup: {
-            marginBottom: '1.25rem'
-        },
-        fieldLabel: {
-            fontSize: '0.875rem',
-            fontWeight: '500',
-            color: '#64748b',
-            marginBottom: '0.25rem',
-            display: 'block'
-        },
-        fieldValue: {
-            fontSize: '1rem',
-            color: '#0f172a',
-            marginTop: '0.25rem',
-            lineHeight: '1.5'
-        }
-    };
-
     return (
-        <div id="appContainer" style={{ position: 'relative' }}>
-            <div id="mainContent" style={{ padding: '1.5rem', maxWidth: '64rem', margin: '0 auto', transition: 'filter 0.3s ease' }}>
+        <div id="appContainer">
+            <div id="mainContent">
                 {/* Add the logo above the title */}
-                <img src={logo} alt="Work Logger Logo" style={{ margin: '0 auto', marginBottom: '1rem', height: '3rem', display: 'block' }} />
-                <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: 'center' }}>Work Logger</h1>
+                <img src={logo} alt="Work Logger Logo" className="logo" />
+                <h1 className="app-title">Work Logger</h1>
 
                 {/* Add new work log form */}
-                <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '0.5rem', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', marginBottom: '2rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>Add New Work Log</h2>
+                <div className="card">
+                    <h2 className="card-title">Add New Work Log</h2>
 
-                    {error && <div style={{ backgroundColor: '#fee2e2', borderLeft: '4px solid #ef4444', color: '#b91c1c', padding: '1rem', marginBottom: '1rem' }}>{error}</div>}
+                    {error && <div className="error-message">{error}</div>}
 
                     <form onSubmit={handleSubmit}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', color: '#374151', marginBottom: '0.5rem' }}>Job Name *</label>
+                        <div className="form-grid">
+                            <div className="form-group">
+                                <label>Job Name *</label>
                                 <input
                                     type="text"
                                     name="jobName"
                                     value={formData.jobName}
                                     onChange={handleInputChange}
-                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                                    className="form-control"
                                     placeholder="Enter job name"
                                 />
                             </div>
 
-                            <div>
-                                <label style={{ display: 'block', color: '#374151', marginBottom: '0.5rem' }}>Time</label>
+                            <div className="form-group">
+                                <label>Time</label>
                                 <input
                                     type="datetime-local"
                                     name="time"
                                     value={formData.time}
                                     onChange={handleInputChange}
-                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                                    className="form-control"
                                 />
                             </div>
 
-                            <div>
-                                <label style={{ display: 'block', color: '#374151', marginBottom: '0.5rem' }}>Job Description</label>
+                            <div className="form-group">
+                                <label>Job Description</label>
                                 <textarea
                                     name="jobDescription"
                                     value={formData.jobDescription}
                                     onChange={handleInputChange}
-                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                                    className="form-control"
                                     placeholder="Enter job description"
                                     rows="3"
                                 ></textarea>
                             </div>
 
-                            <div>
-                                <label style={{ display: 'block', color: '#374151', marginBottom: '0.5rem' }}>Duration (hours)</label>
+                            <div className="form-group">
+                                <label>Duration (hours)</label>
                                 <input
                                     type="number"
                                     name="duration"
                                     value={formData.duration}
                                     onChange={handleInputChange}
-                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                                    className="form-control"
                                     min="0.25"
                                     step="0.25"
                                 />
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            style={{
-                                marginTop: '1rem',
-                                backgroundColor: '#3b82f6',
-                                color: 'white',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '0.375rem',
-                                border: 'none',
-                                cursor: 'pointer',
-                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-                                transition: 'background-color 0.2s ease'
-                            }}
-                        >
+                        <button type="submit" className="btn btn-primary">
                             Add Work Log
                         </button>
                     </form>
                 </div>
 
                 {/* Display today's logs */}
-                <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '0.5rem', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' }}>
+                <div className="card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Today's Work Logs</h2>
+                        <h2 className="card-title">Today's Work Logs</h2>
 
                         {logs.length > 0 && (
-                            <button
-                                onClick={exportToCSV}
-                                style={{
-                                    backgroundColor: '#10b981',
-                                    color: 'white',
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '0.375rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-                                    transition: 'background-color 0.2s ease'
-                                }}
-                            >
+                            <button onClick={exportToCSV} className="btn btn-success">
                                 Export to CSV
                             </button>
                         )}
                     </div>
 
                     {todayLogs.length > 0 ? (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ backgroundColor: '#f3f4f6' }}>
-                                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem', textAlign: 'left' }}>Job Name</th>
-                                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem', textAlign: 'left' }}>Description</th>
-                                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem', textAlign: 'left' }}>Time</th>
-                                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem', textAlign: 'left' }}>Duration (hrs)</th>
-                                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem', textAlign: 'left' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {todayLogs.map(log => (
-                                        <tr key={log.id}>
-                                            <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem' }}>
-                                                <button
-                                                    onClick={() => openJobDetails(log)}
-                                                    style={{
-                                                        color: '#2563eb',
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        padding: 0,
-                                                        cursor: 'pointer',
-                                                        textAlign: 'left',
-                                                        textDecoration: 'none',
-                                                        fontWeight: '500',
-                                                        position: 'relative',
-                                                        display: 'inline-block'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.target.style.textDecoration = 'underline';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.target.style.textDecoration = 'none';
-                                                    }}
-                                                >
-                                                    {log.jobName}
-                                                </button>
-                                            </td>
-                                            <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem' }}>{log.jobDescription}</td>
-                                            <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem' }}>{formatDate(log.time)}</td>
-                                            <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem' }}>{log.duration}</td>
-                                            <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem' }}>
-                                                <button
-                                                    onClick={() => handleDelete(log.id)}
-                                                    style={{
-                                                        backgroundColor: '#ef4444',
-                                                        color: 'white',
-                                                        padding: '0.25rem 0.5rem',
-                                                        borderRadius: '0.375rem',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        fontSize: '0.875rem',
-                                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                                        transition: 'background-color 0.2s ease'
-                                                    }}
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="logs-container">
+                            {todayLogs.map(log => (
+                                <div key={log.id} className="log-card">
+                                    <div className="log-header" onClick={() => openJobDetails(log)}>
+                                        <h3 className="job-name">{log.jobName}</h3>
+                                        <div className="log-time-duration">
+                                            <span className="log-time">{formatDate(log.time)}</span>
+                                            <span className="log-duration">{log.duration} hr{log.duration !== 1 ? 's' : ''}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    {log.jobDescription && (
+                                        <div className="log-description">
+                                            {truncateText(log.jobDescription)}
+                                        </div>
+                                    )}
+                                    
+                                    <div className="log-actions">
+                                        <button onClick={() => openJobDetails(log)} className="btn btn-info">
+                                            View Details
+                                        </button>
+                                        <button onClick={() => handleDelete(log.id)} className="btn btn-danger">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
-                        <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No work logs for today. Add your first log above.</p>
+                        <p className="empty-message">No work logs for today. Add your first log above.</p>
                     )}
                 </div>
 
-                <footer style={{ marginTop: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                    <p>Work Logger App {new Date().getFullYear()} | <a href="https://github.com/willzjc/workloggerdemo" style={{ textDecoration: 'underline' }}>GitHub Repository</a></p>
+                <footer className="footer">
+                    <p>Work Logger App {new Date().getFullYear()} | <a href="https://github.com/willzjc/workloggerdemo">GitHub Repository</a></p>
                 </footer>
             </div>
 
             {/* Full-screen popup for job details with blur effect and animations */}
             {showPopup && selectedJob && (
-                <div style={popupStyles.overlay}>
-                    <div style={popupStyles.container}>
-                        <div style={popupStyles.header}>
-                            <h2 style={popupStyles.headerTitle}>Job Details</h2>
+                <div className={`popup-overlay ${showPopup ? 'show' : ''}`}>
+                    <div className="popup-container">
+                        <div className="popup-header">
+                            <h2 className="popup-title">Job Details</h2>
                             <button
                                 onClick={closeJobDetails}
-                                style={popupStyles.closeButton}
-                                onMouseEnter={(e) => {
-                                    e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.target.style.backgroundColor = 'transparent';
-                                }}
+                                className="popup-close"
                             >
                                 ×
                             </button>
                         </div>
-                        <div style={popupStyles.body}>
+                        <div className="popup-body">
                             <div>
-                                <div style={popupStyles.fieldGroup}>
-                                    <h3 style={popupStyles.fieldLabel}>Job Name</h3>
-                                    <p style={popupStyles.fieldValue}>{selectedJob.jobName}</p>
+                                <div className="field-group">
+                                    <h3 className="field-label">Job Name</h3>
+                                    <p className="field-value">{selectedJob.jobName}</p>
                                 </div>
-                                <div style={popupStyles.fieldGroup}>
-                                    <h3 style={popupStyles.fieldLabel}>Time</h3>
-                                    <p style={popupStyles.fieldValue}>{formatDate(selectedJob.time)}</p>
+                                <div className="field-group">
+                                    <h3 className="field-label">Time</h3>
+                                    <p className="field-value">{formatDate(selectedJob.time)}</p>
                                 </div>
-                                <div style={popupStyles.fieldGroup}>
-                                    <h3 style={popupStyles.fieldLabel}>Duration</h3>
-                                    <p style={popupStyles.fieldValue}>{selectedJob.duration} hours</p>
+                                <div className="field-group">
+                                    <h3 className="field-label">Duration</h3>
+                                    <p className="field-value">{selectedJob.duration} hours</p>
                                 </div>
-                                <div style={popupStyles.fieldGroup}>
-                                    <h3 style={popupStyles.fieldLabel}>Description</h3>
-                                    <div style={{ ...popupStyles.fieldValue, whiteSpace: 'pre-wrap' }}>
+                                <div className="field-group">
+                                    <h3 className="field-label">Description</h3>
+                                    <div className="field-value pre-wrap">
                                         {selectedJob.jobDescription || "No description provided."}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div style={popupStyles.footer}>
+                        <div className="popup-footer">
                             <button
                                 onClick={closeJobDetails}
-                                style={popupStyles.footerButton}
-                                onMouseEnter={(e) => {
-                                    e.target.style.backgroundColor = '#2563eb';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.target.style.backgroundColor = '#3b82f6';
-                                }}
+                                className="popup-btn"
                             >
                                 Close
                             </button>
