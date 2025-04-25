@@ -5,6 +5,7 @@
 .App-logo {
     height: 40vmin;
     pointer-events: none;
+    content: url('../images/logo.png');
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -37,3 +38,37 @@
         transform: rotate(360deg);
     }
 }
+
+
+body {
+    background-color: white;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .container {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .logo {
+    height: 30px;
+    width: auto;
+    margin-right: 10px;
+  }
+  
+  .title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+  }
+  

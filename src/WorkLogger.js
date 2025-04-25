@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import logo from './logo.png';
+import logo from './images/logo.png';
 import './styles/WorkLogger.css';
 import * as d3 from 'd3';
 import { 
