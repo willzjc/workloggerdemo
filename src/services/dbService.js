@@ -10,7 +10,9 @@ import {
   where, 
   onSnapshot,
   Timestamp,
-  orderBy
+  orderBy,
+  enableNetwork,
+  disableNetwork
 } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'workLogs';
@@ -36,29 +38,64 @@ export const getAllLogs = async () => {
   }
 };
 
+// Handle Firebase connection status
+export const handleFirebaseConnectionStatus = async (online = true) => {
+  try {
+    if (online) {
+      await enableNetwork(db);
+      console.log('Firebase network connection enabled');
+    } else {
+      await disableNetwork(db);
+      console.log('Firebase network connection disabled');
+    }
+  } catch (error) {
+    console.error('Firebase network status change error:', error);
+  }
+};
+
 // Get today's logs
-export const getTodayLogs = (callback) => {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-  
-  const q = query(
-    collection(db, COLLECTION_NAME),
-    where('time', '>=', dateToTimestamp(startOfDay)),
-    where('time', '<=', dateToTimestamp(endOfDay)),
-    orderBy('time', 'desc')
-  );
-  
-  return onSnapshot(q, (querySnapshot) => {
-    const logs = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      time: timestampToDate(doc.data().time).toISOString()
-    }));
-    callback(logs);
-  });
+export const getTodayLogs = (callback, errorCallback = null) => {
+  try {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where('time', '>=', dateToTimestamp(startOfDay)),
+      where('time', '<=', dateToTimestamp(endOfDay)),
+      orderBy('time', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(
+      q, 
+      (querySnapshot) => {
+        const logs = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          time: timestampToDate(doc.data().time).toISOString()
+        }));
+        callback(logs);
+      },
+      (error) => {
+        console.error("Error in today's logs subscription:", error);
+        if (errorCallback) {
+          errorCallback(error);
+        }
+      }
+    );
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error("Error creating today's logs subscription:", error);
+    if (errorCallback) {
+      errorCallback(error);
+    }
+    // Return a dummy unsubscribe function in case of error
+    return () => {};
+  }
 };
 
 // Add a new log
@@ -102,16 +139,38 @@ export const deleteLog = async (id) => {
 };
 
 // Listen for all logs in real time
-export const subscribeToLogs = (callback) => {
-  return onSnapshot(
-    query(collection(db, COLLECTION_NAME), orderBy('time', 'desc')), 
-    (snapshot) => {
-      const logs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        time: timestampToDate(doc.data().time).toISOString()
-      }));
-      callback(logs);
+export const subscribeToLogs = (callback, errorCallback = null) => {
+  try {
+    const q = query(
+      collection(db, COLLECTION_NAME), 
+      orderBy('time', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(
+      q, 
+      (snapshot) => {
+        const logs = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          time: timestampToDate(doc.data().time).toISOString()
+        }));
+        callback(logs);
+      },
+      (error) => {
+        console.error("Error in logs subscription:", error);
+        if (errorCallback) {
+          errorCallback(error);
+        }
+      }
+    );
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error("Error creating subscription:", error);
+    if (errorCallback) {
+      errorCallback(error);
     }
-  );
+    // Return a dummy unsubscribe function in case of error
+    return () => {};
+  }
 };

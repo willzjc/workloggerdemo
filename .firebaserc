@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "workloggerdemo",
+    "staging": "workloggerdemo"
+  },
+  "targets": {},
+  "etags": {}
+}

@@ -2,16 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import logo from './logo.png';
 import './styles/WorkLogger.css';
 import * as d3 from 'd3';
-// eslint-disable-next-line no-unused-vars
-import WorkLogVisualization from './components/WorkLogVisualization';
-import { addLog, deleteLog, updateLog, subscribeToLogs, getTodayLogs } from './services/dbService';
+import { 
+  addLog, 
+  deleteLog, 
+  updateLog, 
+  subscribeToLogs, 
+  getTodayLogs,
+  handleFirebaseConnectionStatus 
+} from './services/dbService';
 
 export default function WorkLogger() {
     const [logs, setLogs] = useState([]);
     const [todayLogs, setTodayLogs] = useState([]);
     const [loading, setLoading] = useState(true);
-
+    const [connectionError, setConnectionError] = useState(false);
     const [formData, setFormData] = useState({
+        name: '',
         jobName: '',
         jobDescription: '',
         time: formatDateTimeForInput(new Date()),
@@ -63,23 +69,92 @@ export default function WorkLogger() {
         return sentences.slice(0, sentenceCount).join('') + '...';
     }
 
+    // Handle Firebase connection errors
+    const handleFirebaseError = (error) => {
+        console.error("Firebase connection error:", error);
+        setConnectionError(true);
+        setError("Connection error. Check your internet connection and try again.");
+    };
+
+    // Attempt to reconnect when app comes online
+    useEffect(() => {
+        const handleOnline = () => {
+            console.log("App is online. Attempting to reconnect to Firebase...");
+            handleFirebaseConnectionStatus(true)
+                .then(() => {
+                    setConnectionError(false);
+                    setError('');
+                })
+                .catch(err => {
+                    console.error("Failed to reconnect:", err);
+                });
+        };
+
+        const handleOffline = () => {
+            console.log("App is offline. Disabling Firebase network...");
+            handleFirebaseConnectionStatus(false);
+            setConnectionError(true);
+            setError("You are offline. Please check your internet connection.");
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        // Check initial connection status
+        if (!navigator.onLine) {
+            handleOffline();
+        }
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+            // Ensure we're enabling the network when component unmounts
+            // to prevent issues with other Firebase operations
+            handleFirebaseConnectionStatus(true).catch(console.error);
+        };
+    }, []);
+
     // Subscribe to logs
     useEffect(() => {
         setLoading(true);
-        const unsubscribeAll = subscribeToLogs((fetchedLogs) => {
-            setLogs(fetchedLogs);
+        let unsubscribeAll = () => {};
+        let unsubscribeToday = () => {};
+
+        if (!connectionError) {
+            try {
+                unsubscribeAll = subscribeToLogs(
+                    (fetchedLogs) => {
+                        setLogs(fetchedLogs);
+                        setLoading(false);
+                    }, 
+                    handleFirebaseError
+                );
+                
+                unsubscribeToday = getTodayLogs(
+                    (fetchedTodayLogs) => {
+                        setTodayLogs(fetchedTodayLogs);
+                    },
+                    handleFirebaseError
+                );
+            } catch (err) {
+                console.error("Error setting up subscriptions:", err);
+                handleFirebaseError(err);
+                setLoading(false);
+            }
+        } else {
             setLoading(false);
-        });
-        
-        const unsubscribeToday = getTodayLogs((fetchedTodayLogs) => {
-            setTodayLogs(fetchedTodayLogs);
-        });
+        }
         
         return () => {
-            unsubscribeAll();
-            unsubscribeToday();
+            // Make sure unsubscribe functions exist before calling
+            if (typeof unsubscribeAll === 'function') {
+                unsubscribeAll();
+            }
+            if (typeof unsubscribeToday === 'function') {
+                unsubscribeToday();
+            }
         };
-    }, []);
+    }, [connectionError]);
 
     // Animate elements on mount
     useEffect(() => {
@@ -152,6 +227,7 @@ export default function WorkLogger() {
             });
 
             setFormData({
+                name: '',
                 jobName: '',
                 jobDescription: '',
                 time: formatDateTimeForInput(new Date()),
@@ -177,13 +253,14 @@ export default function WorkLogger() {
     const openJobDetails = (job) => {
         setSelectedJob(job);
         setEditFormData({
+            name: job.name || '',
             jobName: job.jobName,
             jobDescription: job.jobDescription,
             time: formatDateTimeForInput(new Date(job.time)),
             duration: job.duration
         });
-        setShowPopup(true);
         setIsEditMode(false);
+        setShowPopup(true);
     };
 
     const closeJobDetails = () => {
@@ -215,9 +292,8 @@ export default function WorkLogger() {
 
         try {
             await updateLog(selectedJob.id, editFormData);
-            
-            setIsEditMode(false);
             setError('');
+            setIsEditMode(false);
             
             setSelectedJob({
                 ...selectedJob,
@@ -231,6 +307,7 @@ export default function WorkLogger() {
 
     const cancelEdit = () => {
         setEditFormData({
+            name: selectedJob.name || '',
             jobName: selectedJob.jobName,
             jobDescription: selectedJob.jobDescription,
             time: formatDateTimeForInput(new Date(selectedJob.time)),
@@ -241,9 +318,10 @@ export default function WorkLogger() {
     };
 
     const exportToCSV = () => {
-        const headers = ['Job Name', 'Job Description', 'Time', 'Duration (hours)'];
-
+        const headers = ['Name', 'Job Name', 'Job Description', 'Time', 'Duration (hours)'];
+        
         const csvData = logs.map(log => [
+            log.name,
             log.jobName,
             log.jobDescription,
             log.time,
@@ -251,7 +329,7 @@ export default function WorkLogger() {
         ]);
 
         csvData.unshift(headers);
-
+        
         const csvString = csvData.map(row =>
             row.map(cell =>
                 cell !== null && cell !== undefined
@@ -280,7 +358,7 @@ export default function WorkLogger() {
                         <h1 className="app-title">Work Logger</h1>
                     </div>
                 </div>
-
+                
                 <div id="mainform" className="card glass-effect" ref={mainFormRef}>
                     <h2 className="card-title">Add New Work Log</h2>
 
@@ -288,6 +366,18 @@ export default function WorkLogger() {
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-grid">
+                            <div className="form-group">
+                                <label>Person Name</label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleInputChange}
+                                    className="form-control"
+                                    placeholder="Enter person name"
+                                />
+                            </div>
+
                             <div className="form-group">
                                 <label>Job Name *</label>
                                 <input
@@ -324,7 +414,7 @@ export default function WorkLogger() {
                                     step="0.25"
                                 />
                             </div>
-                            
+
                             <div className="form-group">
                                 <label>Time</label>
                                 <input
@@ -365,6 +455,7 @@ export default function WorkLogger() {
                                 <div key={log.id} className="log-card">
                                     <div className="log-header" onClick={() => openJobDetails(log)}>
                                         <h3 className="job-name">{log.jobName}</h3>
+                                        {log.name && <div className="log-person">By: {log.name}</div>}
                                         <div className="log-time-duration">
                                             <span className="log-time">{formatDate(log.time)}</span>
                                             <span className="log-duration">{log.duration} hr{log.duration !== 1 ? 's' : ''}</span>
@@ -398,6 +489,28 @@ export default function WorkLogger() {
                 </footer>
             </div>
 
+            {connectionError && (
+                <div className="connection-error-banner">
+                    <p>
+                        <strong>Connection Error:</strong> Unable to connect to the database. 
+                        Some features may be unavailable. 
+                        <button 
+                            onClick={() => {
+                                handleFirebaseConnectionStatus(true)
+                                    .then(() => {
+                                        setConnectionError(false);
+                                        setError('');
+                                    })
+                                    .catch(err => console.error("Reconnection failed:", err));
+                            }}
+                            className="btn btn-sm btn-primary ml-2"
+                        >
+                            Try Again
+                        </button>
+                    </p>
+                </div>
+            )}
+
             {showPopup && selectedJob && (
                 <div className={`popup-overlay ${showPopup ? 'show' : ''}`}>
                     <div className="popup-container">
@@ -410,10 +523,23 @@ export default function WorkLogger() {
                                 ×
                             </button>
                         </div>
+                        
                         {error && <div className="error-message">{error}</div>}
+                        
                         <div className="popup-body">
                             {isEditMode ? (
                                 <div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Person Name</h3>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={editFormData.name}
+                                            onChange={handleEditChange}
+                                            className="form-control"
+                                        />
+                                    </div>
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Job Name</h3>
                                         <input
@@ -424,6 +550,7 @@ export default function WorkLogger() {
                                             className="form-control"
                                         />
                                     </div>
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Time</h3>
                                         <input
@@ -434,6 +561,7 @@ export default function WorkLogger() {
                                             className="form-control"
                                         />
                                     </div>
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Duration (hours)</h3>
                                         <input
@@ -446,6 +574,7 @@ export default function WorkLogger() {
                                             step="0.25"
                                         />
                                     </div>
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Description</h3>
                                         <textarea
@@ -459,18 +588,28 @@ export default function WorkLogger() {
                                 </div>
                             ) : (
                                 <div>
+                                    {selectedJob.name && (
+                                        <div className="field-group">
+                                            <h3 className="field-label">Person Name</h3>
+                                            <p className="field-value">{selectedJob.name}</p>
+                                        </div>
+                                    )}
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Job Name</h3>
                                         <p className="field-value">{selectedJob.jobName}</p>
                                     </div>
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Time</h3>
                                         <p className="field-value">{formatDate(selectedJob.time)}</p>
                                     </div>
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Duration</h3>
                                         <p className="field-value">{selectedJob.duration} hours</p>
                                     </div>
+                                    
                                     <div className="field-group">
                                         <h3 className="field-label">Description</h3>
                                         <div className="field-value pre-wrap">
@@ -480,6 +619,7 @@ export default function WorkLogger() {
                                 </div>
                             )}
                         </div>
+                        
                         <div className="popup-footer">
                             {isEditMode ? (
                                 <div className="button-group">

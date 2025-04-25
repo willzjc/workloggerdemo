@@ -572,6 +572,36 @@ textarea.form-control {
     }
 }
 
+/* Connection error banner */
+.connection-error-banner {
+    background-color: #ff9800;
+    color: white;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    animation: fadein 0.5s;
+}
+
+.connection-error-banner p {
+    margin: 0;
+    flex: 1;
+}
+
+.connection-error-banner .btn {
+    margin-left: 10px;
+    font-size: 0.9rem;
+    padding: 5px 10px;
+}
+
+@keyframes fadein {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 /* Media query for mobile devices */
 @media (max-width: 768px) {
     #appContainer {
