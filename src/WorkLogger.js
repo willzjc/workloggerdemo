@@ -135,7 +135,7 @@ export default function WorkLogger() {
             <h1 className="text-3xl font-bold mb-6 text-center">Work Logger</h1>
 
             {/* Add new work log form */}
-            <div className="bg-white p-6 rounded-lg shadow-lg mb-8">
+            <div className="bg-white p-6 rounded-lg shadow-lg mb-8 container-border">
                 <h2 className="text-xl font-semibold mb-4">Add New Work Log</h2>
 
                 {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">{error}</div>}
@@ -201,7 +201,7 @@ export default function WorkLogger() {
             </div>
 
             {/* Display today's logs */}
-            <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="bg-white p-6 rounded-lg shadow-lg container-border">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Today's Work Logs</h2>
 
