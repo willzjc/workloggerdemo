@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import logo from './image.png'; // Import the image
-import './styles/WorkLogger.css'; // Import the consolidated styles
+import React, { useState, useEffect, useRef } from 'react';
+import logo from './logo.png';
+import './styles/WorkLogger.css';
+import * as d3 from 'd3';
+// eslint-disable-next-line no-unused-vars
+import WorkLogVisualization from './components/WorkLogVisualization';
 
 export default function WorkLogger() {
     const [logs, setLogs] = useState(() => {
@@ -18,8 +21,12 @@ export default function WorkLogger() {
     const [error, setError] = useState('');
     const [selectedJob, setSelectedJob] = useState(null);
     const [showPopup, setShowPopup] = useState(false);
-    const [isEditMode, setIsEditMode] = useState(false); // New state for edit mode
-    const [editFormData, setEditFormData] = useState({}); // New state for edit form data
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editFormData, setEditFormData] = useState({});
+
+    const logoRef = useRef(null);
+    const mainFormRef = useRef(null);
+    const workLogsRef = useRef(null);
 
     // Date formatting functions to replace date-fns
     function formatDate(date) {
@@ -47,7 +54,6 @@ export default function WorkLogger() {
     function truncateText(text, sentenceCount = 2) {
         if (!text) return "";
         
-        // Split by sentence endings (period followed by a space or end of string)
         const sentences = text.match(/[^.!?]+[.!?]+\s*|[^.!?]+$/g) || [];
         
         if (sentences.length <= sentenceCount) {
@@ -73,21 +79,18 @@ export default function WorkLogger() {
     useEffect(() => {
         const mainContent = document.getElementById('mainContent');
         if (showPopup) {
-            // Add blur effect to main content when popup is open
             document.body.style.overflow = 'hidden';
             if (mainContent) {
                 mainContent.style.filter = 'blur(5px)';
                 mainContent.style.transition = 'filter 0.3s ease';
             }
         } else {
-            // Remove blur effect when popup is closed
             document.body.style.overflow = 'auto';
             if (mainContent) {
                 mainContent.style.filter = 'none';
             }
         }
 
-        // Cleanup function
         return () => {
             document.body.style.overflow = 'auto';
             if (mainContent) {
@@ -95,6 +98,53 @@ export default function WorkLogger() {
             }
         };
     }, [showPopup]);
+
+    // Animate elements on mount
+    useEffect(() => {
+        if (logoRef.current) {
+            d3.select(logoRef.current)
+                .style("opacity", 0)
+                .style("transform", "translateY(-20px)")
+                .transition()
+                .duration(800)
+                .style("opacity", 1)
+                .style("transform", "translateY(0)");
+        }
+        
+        if (mainFormRef.current) {
+            d3.select(mainFormRef.current)
+                .style("opacity", 0)
+                .style("transform", "translateY(20px)")
+                .transition()
+                .delay(300)
+                .duration(800)
+                .style("opacity", 1)
+                .style("transform", "translateY(0)");
+        }
+        
+        if (workLogsRef.current) {
+            d3.select(workLogsRef.current)
+                .style("opacity", 0)
+                .style("transform", "translateY(20px)")
+                .transition()
+                .delay(600)
+                .duration(800)
+                .style("opacity", 1)
+                .style("transform", "translateY(0)");
+        }
+    }, []);
+
+    // Animate log cards when they appear or change
+    useEffect(() => {
+        d3.selectAll(".log-card")
+            .style("opacity", 0)
+            .style("transform", "translateX(-20px)")
+            .transition()
+            .duration(500)
+            .delay((d, i) => i * 100)
+            .style("opacity", 1)
+            .style("transform", "translateX(0)");
+    }, [todayLogs]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -107,23 +157,19 @@ export default function WorkLogger() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // Validate form data
         if (!formData.jobName.trim()) {
             setError('Job name is required');
             return;
         }
 
-        // Create new log entry
         const newLog = {
             id: Date.now(),
             ...formData,
             time: formData.time
         };
 
-        // Add to logs
         setLogs(prev => [...prev, newLog]);
 
-        // Reset form
         setFormData({
             jobName: '',
             jobDescription: '',
@@ -138,7 +184,6 @@ export default function WorkLogger() {
         setLogs(prev => prev.filter(log => log.id !== id));
     };
 
-    // Function to open job details popup
     const openJobDetails = (job) => {
         setSelectedJob(job);
         setEditFormData({
@@ -148,20 +193,18 @@ export default function WorkLogger() {
             duration: job.duration
         });
         setShowPopup(true);
-        setIsEditMode(false); // Reset to view mode when opening
+        setIsEditMode(false);
     };
 
-    // Function to close job details popup
     const closeJobDetails = () => {
         setShowPopup(false);
-        setIsEditMode(false); // Reset edit mode
+        setIsEditMode(false);
         setTimeout(() => {
             setSelectedJob(null);
             setEditFormData({});
-        }, 300); // Delay clearing the selected job until after animation
+        }, 300);
     };
 
-    // Handle edit form changes
     const handleEditChange = (e) => {
         const { name, value } = e.target;
         setEditFormData(prev => ({
@@ -170,20 +213,16 @@ export default function WorkLogger() {
         }));
     };
 
-    // Enter edit mode
     const enterEditMode = () => {
         setIsEditMode(true);
     };
 
-    // Save edited job
     const saveEditedJob = () => {
-        // Validate edit form data
         if (!editFormData.jobName.trim()) {
             setError('Job name is required');
             return;
         }
 
-        // Update the log
         setLogs(prev => prev.map(log => 
             log.id === selectedJob.id 
                 ? { ...log, ...editFormData } 
@@ -193,16 +232,13 @@ export default function WorkLogger() {
         setIsEditMode(false);
         setError('');
         
-        // Update the selected job to see the changes in view mode
         setSelectedJob({
             ...selectedJob,
             ...editFormData
         });
     };
 
-    // Cancel editing
     const cancelEdit = () => {
-        // Reset form data to original values
         setEditFormData({
             jobName: selectedJob.jobName,
             jobDescription: selectedJob.jobDescription,
@@ -213,11 +249,9 @@ export default function WorkLogger() {
         setError('');
     };
 
-    // Custom CSV export function to replace react-csv
     const exportToCSV = () => {
         const headers = ['Job Name', 'Job Description', 'Time', 'Duration (hours)'];
 
-        // Convert logs to CSV format
         const csvData = logs.map(log => [
             log.jobName,
             log.jobDescription,
@@ -225,10 +259,8 @@ export default function WorkLogger() {
             log.duration
         ]);
 
-        // Add headers to the beginning
         csvData.unshift(headers);
 
-        // Convert to CSV string
         const csvString = csvData.map(row =>
             row.map(cell =>
                 cell !== null && cell !== undefined
@@ -237,7 +269,6 @@ export default function WorkLogger() {
             ).join(',')
         ).join('\n');
 
-        // Create a blob and download link
         const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -250,17 +281,19 @@ export default function WorkLogger() {
     };
 
     return (
-        <div id="appContainer">
+        <div id="appContainer" className="modern-theme" style={{ backgroundColor: 'white' }}>
             <div id="mainContent">
-                {/* Add the logo above the title */}
-                <img src={logo} alt="Work Logger Logo" className="logo" />
-                <h1 className="app-title">Work Logger</h1>
+                <div className="header-section" ref={logoRef}>
+                    <div className="logo-title-container">
+                        <img src={logo} alt="Work Logger Logo" className="logo animated-logo" />
+                        <h1 className="app-title">Work Logger</h1>
+                    </div>
+                </div>
 
-                {/* Add new work log form */}
-                <div id="mainform" className="card" style={{ border: '1px solid #ddd' }}>
+                <div id="mainform" className="card glass-effect" ref={mainFormRef}>
                     <h2 className="card-title">Add New Work Log</h2>
 
-                    {error && <div className="error-message">{error}</div>}
+                    {error && <div className="error-message animated-error">{error}</div>}
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-grid">
@@ -273,17 +306,6 @@ export default function WorkLogger() {
                                     onChange={handleInputChange}
                                     className="form-control"
                                     placeholder="Enter job name"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Time</label>
-                                <input
-                                    type="datetime-local"
-                                    name="time"
-                                    value={formData.time}
-                                    onChange={handleInputChange}
-                                    className="form-control"
                                 />
                             </div>
 
@@ -311,6 +333,17 @@ export default function WorkLogger() {
                                     step="0.25"
                                 />
                             </div>
+                            
+                            <div className="form-group">
+                                <label>Time</label>
+                                <input
+                                    type="datetime-local"
+                                    name="time"
+                                    value={formData.time}
+                                    onChange={handleInputChange}
+                                    className="form-control"
+                                />
+                            </div>
                         </div>
 
                         <button type="submit" className="btn btn-primary">
@@ -319,13 +352,12 @@ export default function WorkLogger() {
                     </form>
                 </div>
 
-                {/* Display today's logs */}
-                <div id="worklogs" className="card" style={{ border: '1px solid #ddd' }}>
+                <div id="worklogs" className="card glass-effect" ref={workLogsRef}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <h2 className="card-title">Today's Work Logs</h2>
 
                         {logs.length > 0 && (
-                            <button onClick={exportToCSV} className="btn btn-success">
+                            <button onClick={exportToCSV} className="btn btn-success pulse-animation">
                                 Export to CSV
                             </button>
                         )}
@@ -365,12 +397,11 @@ export default function WorkLogger() {
                     )}
                 </div>
 
-                <footer className="footer">
+                <footer className="footer glass-effect">
                     <p>Work Logger App {new Date().getFullYear()} | <a href="https://github.com/willzjc/workloggerdemo">GitHub Repository</a></p>
                 </footer>
             </div>
 
-            {/* Full-screen popup for job details with blur effect and animations */}
             {showPopup && selectedJob && (
                 <div className={`popup-overlay ${showPopup ? 'show' : ''}`}>
                     <div className="popup-container">
