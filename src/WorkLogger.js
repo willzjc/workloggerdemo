@@ -18,6 +18,8 @@ export default function WorkLogger() {
     const [error, setError] = useState('');
     const [selectedJob, setSelectedJob] = useState(null);
     const [showPopup, setShowPopup] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false); // New state for edit mode
+    const [editFormData, setEditFormData] = useState({}); // New state for edit form data
 
     // Date formatting functions to replace date-fns
     function formatDate(date) {
@@ -139,15 +141,76 @@ export default function WorkLogger() {
     // Function to open job details popup
     const openJobDetails = (job) => {
         setSelectedJob(job);
+        setEditFormData({
+            jobName: job.jobName,
+            jobDescription: job.jobDescription,
+            time: formatDateTimeForInput(new Date(job.time)),
+            duration: job.duration
+        });
         setShowPopup(true);
+        setIsEditMode(false); // Reset to view mode when opening
     };
 
     // Function to close job details popup
     const closeJobDetails = () => {
         setShowPopup(false);
+        setIsEditMode(false); // Reset edit mode
         setTimeout(() => {
             setSelectedJob(null);
+            setEditFormData({});
         }, 300); // Delay clearing the selected job until after animation
+    };
+
+    // Handle edit form changes
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // Enter edit mode
+    const enterEditMode = () => {
+        setIsEditMode(true);
+    };
+
+    // Save edited job
+    const saveEditedJob = () => {
+        // Validate edit form data
+        if (!editFormData.jobName.trim()) {
+            setError('Job name is required');
+            return;
+        }
+
+        // Update the log
+        setLogs(prev => prev.map(log => 
+            log.id === selectedJob.id 
+                ? { ...log, ...editFormData } 
+                : log
+        ));
+
+        setIsEditMode(false);
+        setError('');
+        
+        // Update the selected job to see the changes in view mode
+        setSelectedJob({
+            ...selectedJob,
+            ...editFormData
+        });
+    };
+
+    // Cancel editing
+    const cancelEdit = () => {
+        // Reset form data to original values
+        setEditFormData({
+            jobName: selectedJob.jobName,
+            jobDescription: selectedJob.jobDescription,
+            time: formatDateTimeForInput(new Date(selectedJob.time)),
+            duration: selectedJob.duration
+        });
+        setIsEditMode(false);
+        setError('');
     };
 
     // Custom CSV export function to replace react-csv
@@ -312,7 +375,7 @@ export default function WorkLogger() {
                 <div className={`popup-overlay ${showPopup ? 'show' : ''}`}>
                     <div className="popup-container">
                         <div className="popup-header">
-                            <h2 className="popup-title">Job Details</h2>
+                            <h2 className="popup-title">{isEditMode ? "Edit Job" : "Job Details"}</h2>
                             <button
                                 onClick={closeJobDetails}
                                 className="popup-close"
@@ -320,35 +383,108 @@ export default function WorkLogger() {
                                 ×
                             </button>
                         </div>
+                        {error && <div className="error-message">{error}</div>}
                         <div className="popup-body">
-                            <div>
-                                <div className="field-group">
-                                    <h3 className="field-label">Job Name</h3>
-                                    <p className="field-value">{selectedJob.jobName}</p>
-                                </div>
-                                <div className="field-group">
-                                    <h3 className="field-label">Time</h3>
-                                    <p className="field-value">{formatDate(selectedJob.time)}</p>
-                                </div>
-                                <div className="field-group">
-                                    <h3 className="field-label">Duration</h3>
-                                    <p className="field-value">{selectedJob.duration} hours</p>
-                                </div>
-                                <div className="field-group">
-                                    <h3 className="field-label">Description</h3>
-                                    <div className="field-value pre-wrap">
-                                        {selectedJob.jobDescription || "No description provided."}
+                            {isEditMode ? (
+                                <div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Job Name</h3>
+                                        <input
+                                            type="text"
+                                            name="jobName"
+                                            value={editFormData.jobName}
+                                            onChange={handleEditChange}
+                                            className="form-control"
+                                        />
+                                    </div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Time</h3>
+                                        <input
+                                            type="datetime-local"
+                                            name="time"
+                                            value={editFormData.time}
+                                            onChange={handleEditChange}
+                                            className="form-control"
+                                        />
+                                    </div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Duration (hours)</h3>
+                                        <input
+                                            type="number"
+                                            name="duration"
+                                            value={editFormData.duration}
+                                            onChange={handleEditChange}
+                                            className="form-control"
+                                            min="0.25"
+                                            step="0.25"
+                                        />
+                                    </div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Description</h3>
+                                        <textarea
+                                            name="jobDescription"
+                                            value={editFormData.jobDescription}
+                                            onChange={handleEditChange}
+                                            className="form-control"
+                                            rows="4"
+                                        ></textarea>
                                     </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Job Name</h3>
+                                        <p className="field-value">{selectedJob.jobName}</p>
+                                    </div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Time</h3>
+                                        <p className="field-value">{formatDate(selectedJob.time)}</p>
+                                    </div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Duration</h3>
+                                        <p className="field-value">{selectedJob.duration} hours</p>
+                                    </div>
+                                    <div className="field-group">
+                                        <h3 className="field-label">Description</h3>
+                                        <div className="field-value pre-wrap">
+                                            {selectedJob.jobDescription || "No description provided."}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="popup-footer">
-                            <button
-                                onClick={closeJobDetails}
-                                className="popup-btn"
-                            >
-                                Close
-                            </button>
+                            {isEditMode ? (
+                                <div className="button-group">
+                                    <button
+                                        onClick={saveEditedJob}
+                                        className="popup-btn btn-primary"
+                                    >
+                                        Save Changes
+                                    </button>
+                                    <button
+                                        onClick={cancelEdit}
+                                        className="popup-btn"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="button-group">
+                                    <button
+                                        onClick={enterEditMode}
+                                        className="popup-btn btn-primary"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={closeJobDetails}
+                                        className="popup-btn"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
